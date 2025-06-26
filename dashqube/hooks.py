@@ -251,5 +251,11 @@ fixtures = [
             "module": ["=", "DashQube"]
         }
     },
+    {
+        "doctype": "Client Script",
+        "filters": {
+            "module": ["=", "DashQube"]
+        }
+    },
     
 ]
