@@ -242,3 +242,14 @@ app_license = "mit"
 # 	"Logging DocType Name": 30  # days to retain logs
 # }
 
+# In hooks.py
+fixtures = [
+    "Custom Field",
+    {
+        "doctype": "Custom Field",
+        "filters": {
+            "module": ["=", "DashQube"]
+        }
+    },
+    
+]
