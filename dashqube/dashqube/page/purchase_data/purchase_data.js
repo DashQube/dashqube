@@ -808,32 +808,98 @@ function render_doc_preview(dialog, doctype, doc) {
 
 function create_pr_from_po(po_name, dialog) {
 	if (!po_name) return;
+	
+	// First get the Purchase Order details
 	frappe.call({
-		method: 'erpnext.buying.doctype.purchase_order.purchase_order.make_purchase_receipt',
-		args: { source_name: po_name },
+		method: 'frappe.client.get',
+		args: { doctype: 'Purchase Order', name: po_name },
 		freeze: true,
-		callback: (r) => {
-			const pr_doc = r && r.message;
-			if (!pr_doc) { frappe.msgprint(__('Unable to create Purchase Receipt')); return; }
+		callback: (po_res) => {
+			const po = po_res && po_res.message;
+			if (!po || !(po.items && po.items.length)) { 
+				frappe.msgprint(__('No items found on Purchase Order')); 
+				return; 
+			}
+			
+			// Create Purchase Receipt document manually
+			const pr_doc = {
+				doctype: 'Purchase Receipt',
+				supplier: po.supplier,
+				company: po.company,
+				posting_date: frappe.datetime.get_today(),
+				posting_time: frappe.datetime.get_time(),
+				currency: po.currency || 'SAR',
+				conversion_rate: po.conversion_rate || 1,
+				buying_price_list: po.buying_price_list,
+				price_list_currency: po.price_list_currency,
+				plc_conversion_rate: po.plc_conversion_rate || 1,
+				items: (po.items || []).map(it => ({
+					item_code: it.item_code,
+					item_name: it.item_name,
+					qty: it.qty || 1,
+					received_qty: it.qty || 1,
+					rate: it.rate || 0,
+					amount: (it.qty || 1) * (it.rate || 0),
+					uom: it.uom,
+					warehouse: it.warehouse,
+					base_rate: it.base_rate || it.rate || 0,
+					base_amount: (it.qty || 1) * (it.base_rate || it.rate || 0),
+					conversion_factor: it.conversion_factor || 1,
+					description: it.description,
+					against_purchase_order: po_name,
+					against_purchase_order_item: it.name
+				}))
+			};
+			
+			// Insert the Purchase Receipt
 			frappe.call({
 				method: 'frappe.client.insert',
 				args: { doc: pr_doc },
 				freeze: true,
 				callback: (ins) => {
 					const inserted = ins && ins.message;
-					if (!inserted) { frappe.msgprint(__('Failed to insert Purchase Receipt')); return; }
+					if (!inserted) { 
+						frappe.msgprint(__('Failed to insert Purchase Receipt')); 
+						return; 
+					}
+					
+					// Submit the Purchase Receipt
 					frappe.call({
 						method: 'frappe.client.submit',
 						args: { doc: inserted },
 						freeze: true,
 						callback: (sub) => {
 							const submitted = sub && sub.message ? sub.message : inserted;
-							frappe.show_alert({ message: __('Purchase Receipt {0} submitted', [submitted.name]), indicator: 'green' });
+							frappe.show_alert({ 
+								message: __('Purchase Receipt {0} submitted', [submitted.name]), 
+								indicator: 'green' 
+							});
 							if (dialog) dialog.hide();
 							refresh_active_tab(cur_page.page);
+						},
+						error: (err) => {
+							frappe.msgprint({
+								title: __('Error'),
+								message: __('Error submitting Purchase Receipt: {0}', [err.message || 'Unknown error']),
+								indicator: 'red'
+							});
 						}
 					});
+				},
+				error: (err) => {
+					frappe.msgprint({
+						title: __('Error'),
+						message: __('Error creating Purchase Receipt: {0}', [err.message || 'Unknown error']),
+						indicator: 'red'
+					});
 				}
+			});
+		},
+		error: (err) => {
+			frappe.msgprint({
+				title: __('Error'),
+				message: __('Error fetching Purchase Order: {0}', [err.message || 'Unknown error']),
+				indicator: 'red'
 			});
 		}
 	});
@@ -841,59 +907,95 @@ function create_pr_from_po(po_name, dialog) {
 
 function create_pi_from_pr(pr_name, dialog) {
 	if (!pr_name) return;
+	
+	// First get the Purchase Receipt details
 	frappe.call({
-		method: 'erpnext.buying.doctype.purchase_receipt.purchase_receipt.make_purchase_invoice',
-		args: { source_name: pr_name },
+		method: 'frappe.client.get',
+		args: { doctype: 'Purchase Receipt', name: pr_name },
 		freeze: true,
-		callback: (r) => {
-			const mapped = r && r.message;
-			if (!mapped) { frappe.msgprint(__('Unable to create Purchase Invoice')); return; }
-			// Fallback: if mapping produced no items, rebuild a minimal PI from PR items
-			const proceedWith = (docToInsert) => {
-				frappe.call({
-					method: 'frappe.client.insert',
-					args: { doc: docToInsert },
-					freeze: true,
-					callback: (ins) => {
-						const inserted = ins && ins.message;
-						if (!inserted) { frappe.msgprint(__('Failed to insert Purchase Invoice')); return; }
-						frappe.call({
-							method: 'frappe.client.submit',
-							args: { doc: inserted },
-							freeze: true,
-							callback: (sub) => {
-								const submitted = sub && sub.message ? sub.message : inserted;
-								frappe.show_alert({ message: __('Purchase Invoice {0} submitted', [submitted.name]), indicator: 'green' });
-								if (dialog) dialog.hide();
-								refresh_active_tab(cur_page.page);
-							}
-						});
-					}
-				});
-			};
-
-			if (mapped.items && mapped.items.length) {
-				proceedWith(mapped);
-				return;
+		callback: (pr_res) => {
+			const pr = pr_res && pr_res.message;
+			if (!pr || !(pr.items && pr.items.length)) { 
+				frappe.msgprint(__('No items found on Purchase Receipt')); 
+				return; 
 			}
-
-			// No items from mapper: fetch PR and build PI items
+			
+			// Create Purchase Invoice document manually
+			const pi_doc = {
+				doctype: 'Purchase Invoice',
+				supplier: pr.supplier,
+				company: pr.company,
+				posting_date: frappe.datetime.get_today(),
+				due_date: frappe.datetime.get_today(),
+				currency: pr.currency || 'SAR',
+				conversion_rate: pr.conversion_rate || 1,
+				buying_price_list: pr.buying_price_list,
+				price_list_currency: pr.price_list_currency,
+				plc_conversion_rate: pr.plc_conversion_rate || 1,
+				items: (pr.items || []).map(it => ({
+					item_code: it.item_code,
+					item_name: it.item_name,
+					qty: it.qty || it.received_qty || 1,
+					rate: it.rate || it.valuation_rate || 0,
+					amount: (it.qty || it.received_qty || 1) * (it.rate || it.valuation_rate || 0),
+					uom: it.uom || it.stock_uom,
+					warehouse: it.warehouse,
+					base_rate: it.base_rate || it.rate || it.valuation_rate || 0,
+					base_amount: (it.qty || it.received_qty || 1) * (it.base_rate || it.rate || it.valuation_rate || 0),
+					conversion_factor: it.conversion_factor || 1,
+					description: it.description
+				}))
+			};
+			
+			// Insert the Purchase Invoice
 			frappe.call({
-				method: 'frappe.client.get',
-				args: { doctype: 'Purchase Receipt', name: pr_name },
+				method: 'frappe.client.insert',
+				args: { doc: pi_doc },
 				freeze: true,
-				callback: (pr_res) => {
-					const pr = pr_res && pr_res.message;
-					if (!pr || !(pr.items && pr.items.length)) { frappe.msgprint(__('No items found on Purchase Receipt')); return; }
-					const pi_doc = {
-						doctype: 'Purchase Invoice',
-						supplier: pr.supplier,
-						company: pr.company,
-						posting_date: frappe.datetime.get_today(),
-						items: (pr.items || []).map(it => ({ item_code: it.item_code, qty: it.qty || it.received_qty || 1, rate: it.rate || it.valuation_rate || 0, uom: it.uom || it.stock_uom }))
-					};
-					proceedWith(pi_doc);
+				callback: (ins) => {
+					const inserted = ins && ins.message;
+					if (!inserted) { 
+						frappe.msgprint(__('Failed to insert Purchase Invoice')); 
+						return; 
+					}
+					
+					// Submit the Purchase Invoice
+					frappe.call({
+						method: 'frappe.client.submit',
+						args: { doc: inserted },
+						freeze: true,
+						callback: (sub) => {
+							const submitted = sub && sub.message ? sub.message : inserted;
+							frappe.show_alert({ 
+								message: __('Purchase Invoice {0} submitted', [submitted.name]), 
+								indicator: 'green' 
+							});
+							if (dialog) dialog.hide();
+							refresh_active_tab(cur_page.page);
+						},
+						error: (err) => {
+							frappe.msgprint({
+								title: __('Error'),
+								message: __('Error submitting Purchase Invoice: {0}', [err.message || 'Unknown error']),
+								indicator: 'red'
+							});
+						}
+					});
+				},
+				error: (err) => {
+					frappe.msgprint({
+						title: __('Error'),
+						message: __('Error creating Purchase Invoice: {0}', [err.message || 'Unknown error']),
+						indicator: 'red'
+					});
 				}
+			});
+		},
+		error: (err) => {
+			frappe.msgprint({
+				title: __('Error'),
+				message: __('Error fetching Purchase Receipt: {0}', [err.message || 'Unknown error']),
+				indicator: 'red'
 			});
 		}
 	});
