@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-09-15 20:03:57.378865",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-09-15 20:04:22.892316",
+ "modified_by": "Administrator",
+ "module": "DashQube",
+ "name": "purchase-data",
+ "owner": "Administrator",
+ "page_name": "purchase-data",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Purchase Data"
+}
