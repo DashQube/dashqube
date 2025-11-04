@@ -1,7 +1,7 @@
 frappe.pages['purchase-data'].on_page_load = function(wrapper) {
 	var page = frappe.ui.make_app_page({
 		parent: wrapper,
-		title: 'Purchase Data',
+		title: 'Purchase Transactions',
 		single_column: true
 	});
 
@@ -16,23 +16,53 @@ function setup_purchase_data_page(page) {
 
 	const tabs = make_tabs(page);
 
-	// scoped styles to improve UI
+	// Neutral, minimal styles
 	const style = $('<style>\
-	\t.purchase-data-tabs .nav-tabs { margin-bottom: 8px; }\
-	\t.pd-card { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; }\
-	\t.pd-header { display: flex; gap: 8px; align-items: center; justify-content: space-between; }\
-	\t.pd-header .pd-search { flex: 1 1 auto; max-width: 560px; }\
-	\t.pd-list { margin-top: 8px; }\
-	\t.pd-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 4px; border-bottom: 1px solid var(--border-color); cursor: pointer; }\
-	\t.pd-row:last-child { border-bottom: 0; }\
-	\t.pd-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\
-	\t.pd-sub { color: var(--text-muted); font-size: 12px; white-space: nowrap; }\
-	\t.pd-right { text-align: right; min-width: 160px; }\
-	\t.pd-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; background: var(--bg-light-gray); }\
+		.purchase-data-tabs .nav-tabs { margin-bottom: 8px; border-bottom: 1px solid #e5e7eb; }\
+		.purchase-data-tabs .nav-link { color: #374151; font-weight: 500; border: none; padding: 8px 12px; margin-right: 4px; border-radius: 6px 6px 0 0; }\
+		.purchase-data-tabs .nav-link:hover { background: #f3f4f6; }\
+		.purchase-data-tabs .nav-link.active { background: #2563eb; color: #fff; }\
+		.pd-card { background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }\
+		.pd-header { display: flex; gap: 8px; align-items: center; justify-content: space-between; }\
+		.pd-header .pd-search { flex: 1 1 auto; max-width: 560px; }\
+		.pd-list { margin-top: 8px; }\
+		.pd-row { display: flex; justify-content: space-between; gap: 16px; padding: 10px 4px; border-bottom: 1px solid #e5e7eb; cursor: pointer; }\
+		.pd-row:last-child { border-bottom: 0; }\
+		.pd-title { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\
+		.pd-sub { color: #6b7280; font-size: 12px; white-space: nowrap; }\
+		.pd-right { text-align: right; min-width: 160px; }\
+		.pd-badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; background: #f3f4f6; color: #374151; }\
+		.btn-primary { background: #2563eb; border: 1px solid #1d4ed8; color: #fff; }\
+		.btn-default { background: #f9fafb; border: 1px solid #e5e7eb; }\
+		.btn-danger { background: #dc2626; border: 1px solid #b91c1c; color: #fff; }\
+		.table thead th { background: #f3f4f6; }\
+		.pd-badge[data-status="Submitted"] { background: #d1fae5; color: #065f46; }\
+		.pd-badge[data-status="Draft"] { background: #e5e7eb; color: #4b5563; }\
+		.pd-badge[data-status="Unpaid"] { background: #fee2e2; color: #991b1b; }\
+		.pd-badge[data-status="Open"] { background: #dbeafe; color: #1e40af; }\
+		.pd-badge[data-status="To Receive"] { background: #fef3c7; color: #92400e; }\
+		.pd-badge[data-status="To Receive and Bill"] { background: #fed7aa; color: #9a3412; }\
+		.pd-badge[data-status="To Bill"] { background: #fef3c7; color: #92400e; }\
+		.pd-badge[data-status="Completed"] { background: #d1fae5; color: #065f46; }\
+		.pd-badge[data-status="Cancelled"] { background: #fee2e2; color: #991b1b; }\
+		.pd-badge[data-status="Closed"] { background: #e5e7eb; color: #4b5563; }\
+		.pd-badge[data-status="Paid"] { background: #d1fae5; color: #065f46; }\
+		.pd-badge[data-status="Partly Paid"] { background: #fef3c7; color: #92400e; }\
+		.pd-badge[data-status="Overdue"] { background: #fee2e2; color: #991b1b; }\
 	</style>');
 	$(page.body).prepend(style);
 
-	render_tab_body(page, tabs, 'Purchase Order');
+	// Add per-tab solid active colors (no gradients)
+	const style2 = $('<style>\
+		.purchase-data-tabs .nav-link.active[data-target="#pd-rfq"] { background: #059669; color: #fff; }\
+		.purchase-data-tabs .nav-link.active[data-target="#pd-sq"] { background: #7c3aed; color: #fff; }\
+		.purchase-data-tabs .nav-link.active[data-target="#pd-po"] { background: #2563eb; color: #fff; }\
+		.purchase-data-tabs .nav-link.active[data-target="#pd-pr"] { background: #1f2937; color: #fff; }\
+		.purchase-data-tabs .nav-link.active[data-target="#pd-pi"] { background: #b91c1c; color: #fff; }\
+	</style>');
+	$(page.body).prepend(style2);
+
+	render_tab_body(page, tabs, 'Request for Quotation');
 
 	// refresh when page is shown again
 	page.wrapper.on('show', () => refresh_active_tab(page));
@@ -43,7 +73,13 @@ function make_tabs(page) {
 		'<div class="purchase-data-tabs">\
 			<ul class="nav nav-tabs" role="tablist">\
 				<li class="nav-item">\
-					<button type="button" class="nav-link active" data-target="#pd-po" role="tab" aria-selected="true">' + __('Purchase Order') + '</button>\
+					<button type="button" class="nav-link active" data-target="#pd-rfq" role="tab" aria-selected="true">' + __('Request for Quotation') + '</button>\
+				</li>\
+				<li class="nav-item">\
+					<button type="button" class="nav-link" data-target="#pd-sq" role="tab" aria-selected="false">' + __('Supplier Quotation') + '</button>\
+				</li>\
+				<li class="nav-item">\
+					<button type="button" class="nav-link" data-target="#pd-po" role="tab" aria-selected="false">' + __('Purchase Order') + '</button>\
 				</li>\
 				<li class="nav-item">\
 					<button type="button" class="nav-link" data-target="#pd-pr" role="tab" aria-selected="false">' + __('Purchase Receipt') + '</button>\
@@ -53,7 +89,9 @@ function make_tabs(page) {
 				</li>\
 			</ul>\
 			<div class="tab-content" style="padding-top: 12px;">\
-				<div class="tab-pane active" id="pd-po" role="tabpanel"></div>\
+				<div class="tab-pane active" id="pd-rfq" role="tabpanel"></div>\
+				<div class="tab-pane" id="pd-sq" role="tabpanel"></div>\
+				<div class="tab-pane" id="pd-po" role="tabpanel"></div>\
 				<div class="tab-pane" id="pd-pr" role="tabpanel"></div>\
 				<div class="tab-pane" id="pd-pi" role="tabpanel"></div>\
 			</div>\
@@ -83,10 +121,12 @@ function render_tab_body(page, tabs_wrapper, label) {
 	const doctype_map = {
 		'Purchase Order': 'Purchase Order',
 		'Purchase Receipt': 'Purchase Receipt',
-		'Purchase Invoice': 'Purchase Invoice'
+		'Purchase Invoice': 'Purchase Invoice',
+		'Request for Quotation': 'Request for Quotation',
+		'Supplier Quotation': 'Supplier Quotation'
 	};
 
-	const pane_id = label === 'Purchase Order' ? '#pd-po' : (label === 'Purchase Receipt' ? '#pd-pr' : '#pd-pi');
+	const pane_id = label === 'Request for Quotation' ? '#pd-rfq' : (label === 'Supplier Quotation' ? '#pd-sq' : (label === 'Purchase Order' ? '#pd-po' : (label === 'Purchase Receipt' ? '#pd-pr' : '#pd-pi')));
 	const $pane = tabs_wrapper.find(pane_id);
 	$pane.empty();
 
@@ -96,74 +136,408 @@ function render_tab_body(page, tabs_wrapper, label) {
 			<button class="btn btn-primary">' + __('New') + ' ' + __(label) + '</button>\
 		</div>'
 	);
-	const item_selector = $('<div class="pd-card" style="margin-top:8px"><div class="pd-items-header d-flex" style="gap:8px; align-items:center; flex-wrap:wrap">\
-		<div class="h6 mb-0" style="margin-right:auto">' + __('All Items') + '</div>\
-		<input type="text" class="form-control pd-item-search" placeholder="' + __('Search by item code, serial number or barcode') + '" style="max-width:360px">\
-		<select class="form-control pd-item-group" style="max-width:240px"><option value="">' + __('Select item group') + '</option></select>\
+	const item_selector = $('<div class="pd-card" style="margin-top:12px"><div class="pd-items-header d-flex" style="gap:12px; align-items:center; flex-wrap:wrap; background: #f9fafb; padding: 16px; border-radius: 8px; margin-bottom: 16px;">\
+		<div class="h6 mb-0" style="margin-right:auto; color: #111827; font-weight: 600;">' + __('All Items') + '</div>\
+		<input type="text" class="form-control pd-item-search" placeholder="' + __('Search by item code, serial number or barcode') + '" style="max-width:360px; border-radius: 6px;">\
+		<select class="form-control pd-item-group" style="max-width:240px; border-radius: 6px;"><option value="">' + __('Select item group') + '</option></select>\
 	</div>\
 	<div class="pd-item-grid" style="margin-top:10px"></div></div>');
 
-	// inline creation panel (visible on all tabs, configured per active doctype)
-	const create_box = $('<div class="pd-card pd-create" style="margin-top:8px; display:none"></div>');
-
 	const list = $('<div class="pd-card pd-list result-list"></div>');
-	$pane.append(header).append(create_box).append(list);
+	$pane.append(header).append(list);
 	$pane.prepend(item_selector);
 
-	// Replace free-text search with Supplier Link control
-	const supplier_placeholder = header.find('.pd-search');
-	const supplier_control = frappe.ui.form.make_control({
-		parent: supplier_placeholder.get(0),
-		df: {
-			label: __('Supplier'),
-			fieldname: 'supplier_filter',
-			fieldtype: 'Link',
-			options: 'Supplier',
-			placeholder: __('Select Supplier')
-		},
-		only_input: false
-	});
-	supplier_control.refresh();
+	// Build header filters based on tab
 	const new_btn = header.find('button');
+	let supplier_control = null;
+	if (label === 'Request for Quotation') {
+		// RFQ: Company + Supplier filters
+		const wrap = $('<div class="d-flex" style="gap:8px; width:100%"></div>');
+		header.find('.pd-search').append(wrap);
+		const company_placeholder = $('<div style="min-width:200px"></div>').appendTo(wrap);
+		const supplier_placeholder = $('<div style="min-width:220px"></div>').appendTo(wrap);
+		const company_control = frappe.ui.form.make_control({
+			parent: company_placeholder.get(0),
+			df: { label: __('Company'), fieldname: 'company_filter', fieldtype: 'Link', options: 'Company', placeholder: __('Select Company') },
+			only_input: false
+		});
+		company_control.refresh();
+		supplier_control = frappe.ui.form.make_control({
+			parent: supplier_placeholder.get(0),
+			df: { label: __('Supplier'), fieldname: 'supplier_filter', fieldtype: 'Link', options: 'Supplier', placeholder: __('Select Supplier') },
+			only_input: false
+		});
+		supplier_control.refresh();
+		// remove default New button for RFQ (we use Create RFQ)
+		new_btn.remove();
+		const apply_filters = () => {
+			list.data('rfq_company', company_control.get_value ? company_control.get_value() : '');
+			trigger_search();
+		};
+		$(company_control.$input).on('change', apply_filters);
+	} else {
+		// Supplier Link control for other tabs
+		const supplier_placeholder = header.find('.pd-search');
+		supplier_control = frappe.ui.form.make_control({
+			parent: supplier_placeholder.get(0),
+			df: { label: __('Supplier'), fieldname: 'supplier_filter', fieldtype: 'Link', options: 'Supplier', placeholder: __('Select Supplier') },
+			only_input: false
+		});
+		supplier_control.refresh();
+	}
 
 	new_btn.on('click', () => create_doc_inline(doctype_map[label], () => trigger_search()));
 
 	let search_timer = null;
 	const trigger_search = () => {
-		const supplier = (supplier_control.get_value && supplier_control.get_value()) || '';
-		load_docs_into(list, doctype_map[label], supplier);
+		const supplier = supplier_control && supplier_control.get_value ? supplier_control.get_value() : '';
+		load_docs_into(list, doctype_map[label], supplier, label);
 	};
 
 	// trigger on change of supplier link
-	$(supplier_control.$input).on('change', () => {
-		if (search_timer) clearTimeout(search_timer);
-		search_timer = setTimeout(trigger_search, 50);
-	});
+	if (supplier_control && supplier_control.$input) {
+		$(supplier_control.$input).on('change', () => { if (search_timer) clearTimeout(search_timer); search_timer = setTimeout(trigger_search, 50); });
+	}
 
 	// initial load
 	trigger_search();
 
+	// Selected Items box for RFQ and SQ
+	let $selectedBox = null;
+	if (label === 'Request for Quotation' || label === 'Supplier Quotation') {
+		$selectedBox = $('<div class="pd-card" style="margin-top:8px"><div class="h6" style="margin-bottom:8px">' + __('Selected Items') + '</div><div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('Warehouse') + '</th><th></th></tr></thead><tbody class="pd-sel-body"><tr class="pd-empty"><td colspan="4" class="text-center text-muted">' + __('No items selected') + '</td></tr></tbody></table></div></div>');
+		$pane.append($selectedBox);
+	}
+
+	// Selected Suppliers box for RFQ
+	let $suppliersBox = null;
+	if (label === 'Request for Quotation') {
+		$suppliersBox = $('<div class="pd-card" style="margin-top:8px"><div class="h6" style="margin-bottom:8px">' + __('Selected Suppliers') + '</div><div class="table-responsive"><table class="table table-bordered table-sm"><thead><tr><th>' + __('Supplier') + '</th><th></th></tr></thead><tbody class="pd-sup-body"><tr class="pd-empty"><td colspan="2" class="text-center text-muted">' + __('No suppliers selected') + '</td></tr></tbody></table></div></div>');
+		$pane.append($suppliersBox);
+		const addSupplier = (name) => {
+			const tbody = $suppliersBox.find('.pd-sup-body');
+			if (!name) return;
+			if (tbody.find('tr[data-supplier="' + frappe.utils.escape_html(name) + '"]').length) return;
+			$suppliersBox.find('.pd-empty').remove();
+			const appendRow = (label) => {
+				const tr = $('<tr data-supplier="' + frappe.utils.escape_html(name) + '"><td>' + frappe.utils.escape_html(label || name) + '</td><td class="text-right"><button class="btn btn-xs btn-danger">' + __('Remove') + '</button></td></tr>');
+				tr.find('button').on('click', () => { tr.remove(); if (!tbody.find('tr').length) tbody.append('<tr class="pd-empty"><td colspan="2" class="text-center text-muted">' + __('No suppliers selected') + '</td></tr>'); });
+				tbody.append(tr);
+			};
+			// fetch supplier_name and display
+			frappe.call({ method: 'frappe.client.get_value', args: { doctype: 'Supplier', filters: { name }, fieldname: 'supplier_name' }, callback: (r) => {
+				const label = (r && r.message && (r.message.supplier_name || r.message[0] && r.message[0].supplier_name)) || name;
+				appendRow(label);
+			}});
+		};
+		// when supplier control changes, add to table (do not trigger search)
+		$(supplier_control.$input).on('awesomplete-selectcomplete change', () => { addSupplier(supplier_control.get_value && supplier_control.get_value()); });
+	}
+
+	const add_to_selected = (item) => {
+		if (!$selectedBox) return;
+		const tbody = $selectedBox.find('.pd-sel-body');
+		const existing = tbody.find('tr[data-code="' + frappe.utils.escape_html(item.name) + '"]');
+		if (existing.length) {
+			const qtyInput = existing.find('input');
+			qtyInput.val(parseFloat(qtyInput.val() || '0') + 1).trigger('input');
+			return;
+		}
+		$selectedBox.find('.pd-empty').remove();
+		const row = $('<tr data-code="' + frappe.utils.escape_html(item.name) + '"><td>' + frappe.utils.escape_html(item.item_name || item.name) + '</td><td class="text-right"><input type="number" step="1" min="1" value="1" class="form-control input-sm" style="max-width:100px; margin-left:auto"></td><td class="text-right" style="min-width:220px"><div class="pd-warehouse"></div></td><td class="text-right"><button class="btn btn-xs btn-danger">' + __('Remove') + '</button></td></tr>');
+		// attach default UOM on row for RFQ items
+		row.attr('data-uom', (item.stock_uom || item.uom || 'Nos'));
+		// create Warehouse Link control
+		const whParent = row.find('.pd-warehouse').get(0);
+		let whCtrl = null;
+		if (whParent) {
+			whCtrl = frappe.ui.form.make_control({ parent: whParent, df: { label: __('Warehouse'), fieldname: 'warehouse', fieldtype: 'Link', options: 'Warehouse', placeholder: __('Select Warehouse') }, only_input: false });
+			whCtrl.refresh();
+			// set default warehouse if available
+			const get_default = (key) => (frappe.defaults && frappe.defaults.get_default) ? frappe.defaults.get_default(key) : null;
+			const default_warehouse = get_default('default_warehouse');
+			if (default_warehouse && whCtrl.set_value) {
+				whCtrl.set_value(default_warehouse);
+			}
+		}
+		row.data('warehouse_ctrl', whCtrl);
+		row.find('button').on('click', () => { row.remove(); if (!tbody.find('tr').length) tbody.append('<tr class="pd-empty"><td colspan="4" class="text-center text-muted">' + __('No items selected') + '</td></tr>'); });
+		tbody.append(row);
+	};
+
 	// initialize item selector
 	initialize_item_selector(item_selector, (it) => {
-		show_purchase_create_box(create_box, doctype_map[label]);
-		purchase_add_item(create_box, it);
+		if (doctype_map[label] === 'Purchase Order') {
+			let $create = $pane.find('.pd-create');
+			if (!$create.length) {
+				$create = $('<div class="pd-card pd-create" style="margin-top:8px;"></div>').appendTo($pane);
+			}
+			show_purchase_create_box($create, doctype_map[label]);
+			purchase_add_item($create, it);
+		} else {
+			add_to_selected(it);
+		}
 	});
+
+	// RFQ Create button
+	if (label === 'Request for Quotation') {
+		const createRfqBtn = $('<button class="btn btn-primary" style="margin-left:8px">' + __('Create Request for Quotation') + '</button>');
+		header.append(createRfqBtn);
+		createRfqBtn.on('click', () => {
+			const suppliers = ($suppliersBox && $suppliersBox.find('.pd-sup-body tr[data-supplier]')).map((i, el) => ({ supplier: $(el).attr('data-supplier') })).get();
+			const items = ($selectedBox && $selectedBox.find('.pd-sel-body tr[data-code]')).map((i, el) => {
+				const warehouse = (($(el).data('warehouse_ctrl') && $(el).data('warehouse_ctrl').get_value) ? $(el).data('warehouse_ctrl').get_value() : '') || '';
+				return {
+					item_code: $(el).attr('data-code'),
+					qty: parseFloat($(el).find('input').val() || '1') || 1,
+					warehouse: warehouse || undefined
+				};
+			}).get();
+			if (!suppliers.length) { frappe.msgprint(__('Please select at least one Supplier')); return; }
+			if (!items.length) { frappe.msgprint(__('Please select at least one Item')); return; }
+			const company = list.data('rfq_company') || null;
+			const get_default = (key) => (frappe.defaults && frappe.defaults.get_default) ? frappe.defaults.get_default(key) : null;
+			const default_warehouse_global = get_default('default_warehouse') || undefined;
+			const rfq_doc = {
+				doctype: 'Request for Quotation',
+				company: company || undefined,
+				suppliers: suppliers.map((s, idx) => ({ supplier: s.supplier, idx: idx + 1 })),
+				message_for_supplier: __('Please quote as per the list below.'),
+				items: items.map(it => ({ 
+					item_code: it.item_code, 
+					qty: it.qty, 
+					rate: 0, // Default rate for RFQ
+					amount: 0, // Will be calculated as rate * qty
+					schedule_date: frappe.datetime.get_today(), 
+					warehouse: it.warehouse || default_warehouse_global, 
+					conversion_factor: 1, 
+					uom: ($selectedBox.find('tr[data-code="' + it.item_code.replace(/["\\]/g, '\\$&') + '"]').attr('data-uom') || 'Nos') 
+				}))
+			};
+			frappe.call({
+				method: 'frappe.client.insert',
+				args: { doc: rfq_doc },
+				freeze: true,
+				callback: (r) => {
+					if (r && r.message) {
+						const created_rfq = r.message;
+						// Ask if user wants to submit the RFQ
+						const d = new frappe.ui.Dialog({
+							title: __('RFQ Created'),
+							size: 'small'
+						});
+						d.$body.append($('<div class="text-center" style="padding: 20px;">\
+							<div class="mb-3">' + __('Request for Quotation {0} has been created.', [created_rfq.name]) + '</div>\
+							<div class="mb-3">' + __('Would you like to submit it?') + '</div>\
+						</div>'));
+						d.set_primary_action(__('Submit RFQ'), () => {
+							frappe.call({
+								method: 'frappe.client.submit',
+								args: { doc: created_rfq },
+								freeze: true,
+								callback: (s) => {
+									const submitted_rfq = (s && s.message) ? s.message : created_rfq;
+									frappe.show_alert({ message: __('RFQ {0} submitted', [submitted_rfq.name]), indicator: 'green' });
+									d.hide();
+									// Show Create Supplier Quotation option
+									show_create_sq_option(submitted_rfq);
+								},
+								error: (err) => {
+									frappe.msgprint({ title: __('Error'), message: __('Error submitting RFQ: {0}', [err.message || 'Unknown error']), indicator: 'red' });
+								}
+							});
+						});
+						d.set_secondary_action(__('Cancel'), () => {
+							frappe.show_alert({ message: __('RFQ {0} created (not submitted)', [created_rfq.name]), indicator: 'orange' });
+							d.hide();
+						});
+						d.show();
+						// clear selections
+						if ($selectedBox) $selectedBox.find('.pd-sel-body').empty().append('<tr class="pd-empty"><td colspan="4" class="text-center text-muted">' + __('No items selected') + '</td></tr>');
+						if ($suppliersBox) $suppliersBox.find('.pd-sup-body').empty().append('<tr class="pd-empty"><td colspan="2" class="text-center text-muted">' + __('No suppliers selected') + '</td></tr>');
+						refresh_active_tab(cur_page.page);
+					}
+				}
+			});
+		});
+	}
+
+	// Supplier Quotation Create button
+	if (label === 'Supplier Quotation') {
+		const createSqBtn = $('<button class="btn btn-primary" style="margin-left:8px">' + __('Create Supplier Quotation') + '</button>');
+		header.append(createSqBtn);
+		createSqBtn.on('click', () => {
+			// Show dialog to create Supplier Quotation manually
+			const d = new frappe.ui.Dialog({
+				title: __('Create Supplier Quotation'),
+				size: 'large'
+			});
+			
+			// Supplier selection
+			const supplier_group = $('<div class="form-group"></div>');
+			supplier_group.append('<label>' + __('Supplier') + ' <span class="text-danger">*</span></label>');
+			const supplier_sel = $('<select class="form-control" required></select>');
+			supplier_group.append(supplier_sel);
+			d.$body.append(supplier_group);
+			
+			// Load suppliers
+			frappe.call({
+				method: 'frappe.client.get_list',
+				args: { doctype: 'Supplier', fields: ['name', 'supplier_name'], limit_page_length: 100 },
+				callback: (r) => {
+					const suppliers = (r && r.message) || [];
+					suppliers.forEach(s => {
+						supplier_sel.append('<option value="' + frappe.utils.escape_html(s.name) + '">' + frappe.utils.escape_html(s.supplier_name || s.name) + '</option>');
+					});
+				}
+			});
+			
+			// Items table
+			const items_table = $('<div class="table-responsive" style="margin-top:16px"><table class="table table-bordered table-sm"><thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('UOM') + '</th><th class="text-right">' + __('Rate') + '</th><th class="text-right">' + __('Amount') + '</th><th></th></tr></thead><tbody class="sq-create-items-tbody"></tbody></table></div>');
+			d.$body.append(items_table);
+			
+			// Add item button
+			const add_item_btn = $('<button type="button" class="btn btn-sm btn-default">' + __('Add Item') + '</button>');
+			d.$body.append($('<div style="margin-top:8px"></div>').append(add_item_btn));
+			
+			const tbody = items_table.find('.sq-create-items-tbody');
+			let item_count = 0;
+			
+			// Add item functionality
+			const add_item_row = () => {
+				const row = $('<tr data-item-id="' + item_count + '">\
+					<td><select class="form-control input-sm sq-item-select"></select></td>\
+					<td class="text-right"><input type="number" step="1" min="1" class="form-control input-sm sq-qty" value="1" style="max-width:100px; margin-left:auto"></td>\
+					<td class="text-right"><input type="text" class="form-control input-sm sq-uom" value="Nos" style="max-width:80px; margin-left:auto"></td>\
+					<td class="text-right"><input type="number" step="0.01" min="0" class="form-control input-sm sq-rate" value="0" style="max-width:120px; margin-left:auto"></td>\
+					<td class="text-right sq-amount">0.00</td>\
+					<td class="text-right"><button type="button" class="btn btn-xs btn-danger sq-remove">' + __('Remove') + '</button></td>\
+				</tr>');
+				
+				// Load items for dropdown
+				frappe.call({
+					method: 'frappe.client.get_list',
+					args: { doctype: 'Item', fields: ['name', 'item_name', 'stock_uom'], filters: { disabled: 0 }, limit_page_length: 100 },
+					callback: (r) => {
+						const items = (r && r.message) || [];
+						const select = row.find('.sq-item-select');
+						select.append('<option value="">' + __('Select Item') + '</option>');
+						items.forEach(item => {
+							select.append('<option value="' + frappe.utils.escape_html(item.name) + '" data-uom="' + frappe.utils.escape_html(item.stock_uom || 'Nos') + '">' + frappe.utils.escape_html(item.item_name || item.name) + '</option>');
+						});
+					}
+				});
+				
+				// Item selection change
+				row.find('.sq-item-select').on('change', function() {
+					const option = $(this).find('option:selected');
+					const uom = option.data('uom') || 'Nos';
+					row.find('.sq-uom').val(uom);
+				});
+				
+				// Calculate amount when rate or qty changes
+				row.find('.sq-rate, .sq-qty').on('input', function() {
+					const rate = parseFloat(row.find('.sq-rate').val()) || 0;
+					const qty = parseFloat(row.find('.sq-qty').val()) || 1;
+					const amount = rate * qty;
+					row.find('.sq-amount').text(amount.toFixed(2));
+				});
+				
+				// Remove button
+				row.find('.sq-remove').on('click', () => row.remove());
+				
+				tbody.append(row);
+				item_count++;
+			};
+			
+			add_item_btn.on('click', add_item_row);
+			
+			// Add one initial row
+			add_item_row();
+			
+			d.set_primary_action(__('Create'), () => {
+				const supplier = supplier_sel.val();
+				if (!supplier) { frappe.msgprint(__('Please select a Supplier')); return; }
+				
+				const sq_items = [];
+				tbody.find('tr').each(function() {
+					const $row = $(this);
+					const item_code = $row.find('.sq-item-select').val();
+					if (!item_code) return;
+					
+					const qty = parseFloat($row.find('.sq-qty').val()) || 1;
+					const rate = parseFloat($row.find('.sq-rate').val()) || 0;
+					const uom = $row.find('.sq-uom').val() || 'Nos';
+					
+					sq_items.push({
+						item_code: item_code,
+						qty: qty,
+						rate: rate,
+						amount: rate * qty,
+						uom: uom
+					});
+				});
+				
+				if (!sq_items.length) { frappe.msgprint(__('Please add at least one item')); return; }
+				
+				const sq_doc = {
+					doctype: 'Supplier Quotation',
+					supplier: supplier,
+					company: frappe.defaults.get_default('company'),
+					transaction_date: frappe.datetime.get_today(),
+					items: sq_items
+				};
+				
+				frappe.call({
+					method: 'frappe.client.insert',
+					args: { doc: sq_doc },
+					freeze: true,
+					callback: (r) => {
+						if (r && r.message) {
+							frappe.show_alert({ message: __('Supplier Quotation {0} created', [r.message.name]), indicator: 'green' });
+							d.hide();
+							refresh_active_tab(cur_page.page);
+						}
+					}
+				});
+			});
+			
+			d.show();
+		});
+	}
 }
 
-function load_docs_into(container, doctype, supplier_name) {
+function load_docs_into(container, doctype, supplier_name, label_for_logic) {
 	container.empty().append($('<div class="text-muted">' + __('Loading...') + '</div>'));
 
 	const filters = [];
-	const party_field = doctype === 'Purchase Invoice' ? 'supplier' : 'supplier';
-	if (supplier_name) {
-		filters.push([doctype, party_field, '=', supplier_name]);
+	// Only apply supplier filter to PO/PR/PI and Supplier Quotation
+	const apply_supplier = (label_for_logic !== 'Request for Quotation') && supplier_name;
+	if (apply_supplier) {
+		filters.push([doctype, 'supplier', '=', supplier_name]);
+	}
+
+	// RFQ additional filters from header
+	if (label_for_logic === 'Request for Quotation') {
+		const rfq_company = container.data('rfq_company') || '';
+		if (rfq_company) filters.push(['Request for Quotation', 'company', '=', rfq_company]);
+	}
+
+	// fields per doctype
+	let fields = ['name', 'status', 'modified'];
+	if (doctype === 'Purchase Order' || doctype === 'Purchase Receipt' || doctype === 'Purchase Invoice') {
+		fields = ['name', 'supplier', 'posting_date', 'status', 'grand_total', 'currency'];
+	} else if (doctype === 'Supplier Quotation') {
+		fields = ['name', 'supplier', 'transaction_date', 'status', 'grand_total', 'currency'];
+	} else if (doctype === 'Request for Quotation') {
+		fields = ['name', 'transaction_date', 'status'];
 	}
 
 	frappe.call({
 		method: 'frappe.client.get_list',
 		args: {
 			doctype: doctype,
-			fields: ['name', 'supplier', 'posting_date', 'status', 'grand_total', 'currency'],
+			fields: fields,
 			filters: filters,
 			order_by: 'modified desc',
 			limit_page_length: 20
@@ -197,7 +571,7 @@ function render_doc_list(container, doctype, rows) {
 				</div>\
 				<div class="pd-right">\
 					<div>' + (total || '') + '</div>\
-					<div class="pd-badge">' + frappe.utils.escape_html(status) + '</div>\
+					<div class="pd-badge" data-status="' + frappe.utils.escape_html(status) + '">' + frappe.utils.escape_html(status) + '</div>\
 				</div>\
 			</div>'
 		);
@@ -209,26 +583,37 @@ function render_doc_list(container, doctype, rows) {
 
 function refresh_active_tab(page) {
 	const active_link = $(page.body).find('.nav-link.active');
-	const label = active_link.length ? active_link.text().trim() : 'Purchase Order';
-	const pane_id = label === 'Purchase Order' ? '#pd-po' : (label === 'Purchase Receipt' ? '#pd-pr' : '#pd-pi');
+	const label = active_link.length ? active_link.text().trim() : 'Request for Quotation';
+	const doctype_map = {
+		'Purchase Order': 'Purchase Order',
+		'Purchase Receipt': 'Purchase Receipt',
+		'Purchase Invoice': 'Purchase Invoice',
+		'Request for Quotation': 'Request for Quotation',
+		'Supplier Quotation': 'Supplier Quotation'
+	};
+
+	const pane_id = label === 'Request for Quotation' ? '#pd-rfq' : (label === 'Supplier Quotation' ? '#pd-sq' : (label === 'Purchase Order' ? '#pd-po' : (label === 'Purchase Receipt' ? '#pd-pr' : '#pd-pi')));
 	const $pane = $(page.body).find(pane_id);
 	const list = $pane.find('.result-list');
 	if (list.length) {
 		const doctype = label;
-		load_docs_into(list, doctype, ($pane.find('input').val() || '').trim());
+		load_docs_into(list, doctype, ($pane.find('input').val() || '').trim(), label);
 	}
 }
 
 function initialize_item_selector(wrapper, on_select) {
-	// styles for grid
+	// Enhanced styles for item grid with modern colors
 	if (!$(document).data('pd-item-grid-styles')) {
 		const s = $('<style>\
-		.pd-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }\
-		.pd-item-card { border: 1px solid var(--border-color); border-radius: 10px; padding: 10px; background: var(--bg-color); cursor: pointer; }\
-		.pd-item-img { width: 100%; height: 110px; border-radius: 8px; background: var(--bg-light-gray); display:flex; align-items:center; justify-content:center; overflow:hidden; }\
+		.pd-item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; padding: 16px 0; }\
+		.pd-item-card { border: 2px solid #e0e0e0; border-radius: 12px; padding: 16px; background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%); cursor: pointer; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }\
+		.pd-item-card:hover { border-color: #1976d2; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); transform: translateY(-4px) scale(1.02); box-shadow: 0 8px 25px rgba(25, 118, 210, 0.15); }\
+		.pd-item-img { width: 100%; height: 120px; border-radius: 8px; background: linear-gradient(135deg, #f5f5f5 0%, #eeeeee 100%); display:flex; align-items:center; justify-content:center; overflow:hidden; border: 1px solid #e0e0e0; }\
 		.pd-item-img img { max-width: 100%; max-height: 100%; object-fit: contain; }\
-		.pd-item-title { margin-top: 8px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\
-		.pd-item-sub { color: var(--text-muted); font-size: 12px; }\
+		.pd-item-img span { font-size: 48px; font-weight: bold; color: #1976d2; text-shadow: 0 2px 4px rgba(0,0,0,0.1); }\
+		.pd-item-title { margin-top: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #2c3e50; font-size: 14px; }\
+		.pd-item-sub { color: #7f8c8d; font-size: 12px; margin-top: 4px; }\
+		.pd-item-selected { background: linear-gradient(135deg, #c8e6c9 0%, #e8f5e8 100%); color: #2e7d32; padding: 8px 12px; border-radius: 8px; font-weight: 500; border: 1px solid #a5d6a7; }\
 		</style>');
 		$('head').append(s);
 		$(document).data('pd-item-grid-styles', true);
@@ -324,9 +709,9 @@ function show_purchase_create_box($box, doctype) {
 	if ($box.data('initialized')) { $box.show(); return; }
 	$box.data('initialized', true);
 
-	$box.append('<div class="h6" style="margin-bottom:10px">' + __('New') + ' ' + __(doctype) + '</div>');
+	$box.append('<div class="h6" style="margin-bottom:16px; color: #1976d2; font-weight: 600; padding: 12px; background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%); border-radius: 8px; border-left: 4px solid #1976d2;">' + __('New') + ' ' + __(doctype) + '</div>');
 
-	const controls_row = $('<div class="d-flex" style="gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:10px"></div>');
+	const controls_row = $('<div class="d-flex" style="gap:12px; flex-wrap:wrap; align-items:center; margin-bottom:16px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; border: 1px solid #dee2e6;"></div>');
 	$box.append(controls_row);
 
 	// Supplier Link control
@@ -431,7 +816,7 @@ function show_purchase_create_box($box, doctype) {
 	$box.append(taxes_table);
 
 	// Actions
-	const actions = $('<div class="d-flex" style="gap:8px; justify-content:flex-end; margin-top:8px"></div>');
+	const actions = $('<div class="d-flex" style="gap:12px; justify-content:flex-end; margin-top:16px; padding: 16px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-radius: 8px; border: 1px solid #dee2e6;"></div>');
 	const create_btn = $('<button class="btn btn-primary">' + __('Create') + ' ' + __(doctype) + '</button>');
 	const clear_btn = $('<button class="btn btn-default">' + __('Clear') + '</button>');
 	actions.append(clear_btn).append(create_btn);
@@ -563,6 +948,8 @@ function fetch_item_buying_rate(item_code, supplier, callback, companyOverride) 
 	const company = companyOverride || get_default('company');
 	const price_list = get_default('buying_price_list');
 	const posting_date = frappe.datetime.get_today();
+	// ensure currencies are never None to avoid exchange rate validation errors
+	const sys_currency = (frappe.boot && frappe.boot.sysdefaults && (frappe.boot.sysdefaults.currency || frappe.boot.sysdefaults.default_currency)) || 'SAR';
 
 	frappe.call({
 		method: 'erpnext.stock.get_item_details.get_item_details',
@@ -572,6 +959,10 @@ function fetch_item_buying_rate(item_code, supplier, callback, companyOverride) 
 				item_code: item_code,
 				company: company,
 				price_list: price_list,
+				currency: sys_currency,
+				price_list_currency: sys_currency,
+				conversion_rate: 1,
+				plc_conversion_rate: 1,
 				transaction_date: posting_date,
 				qty: 1,
 				supplier: supplier
@@ -590,6 +981,8 @@ function fetch_item_buying_rate(item_code, supplier, callback, companyOverride) 
 function purchase_add_item($box, item) {
 	const state = $box.data('state');
 	if (!state) return;
+	// ensure conversion rate defaults to 1 on first item selection
+	state.conversion_rate = 1;
 	const existing = state.items.find(it => it.item_code === item.name);
 	if (existing) {
 		existing.qty += 1;
@@ -657,15 +1050,16 @@ function create_purchase_document($box) {
 	const get_default = (key) => (frappe.defaults && frappe.defaults.get_default) ? frappe.defaults.get_default(key) : null;
 	const company = state.company_control && state.company_control.get_value ? state.company_control.get_value() : get_default('company');
 	const buying_price_list = get_default('buying_price_list');
-	const sys_currency = (frappe.boot && frappe.boot.sysdefaults && (frappe.boot.sysdefaults.currency || frappe.boot.sysdefaults.default_currency)) || null;
+	const sys_currency = (frappe.boot && frappe.boot.sysdefaults && (frappe.boot.sysdefaults.currency || frappe.boot.sysdefaults.default_currency)) || 'SAR';
 
 	const doc = {
 		doctype: state.doctype || 'Purchase Order',
 		supplier: supplier,
 		company: company || undefined,
 		buying_price_list: buying_price_list || undefined,
-		currency: sys_currency || undefined,
-		price_list_currency: sys_currency || undefined,
+		currency: sys_currency,
+		price_list_currency: sys_currency,
+		conversion_rate: (state && state.conversion_rate) ? state.conversion_rate : 1,
 		plc_conversion_rate: 1,
 		transaction_date: frappe.datetime.get_today(),
 		items: state.items.map(r => ({ item_code: r.item_code, qty: r.qty || 1, rate: r.rate || 0, schedule_date: schedule_date, uom: r.uom })),
@@ -758,19 +1152,33 @@ function render_doc_preview(dialog, doctype, doc) {
 	let items_html = '';
 	const items_child = (doc.items || []).slice(0, 10);
 	if (items_child.length) {
+		// Different table headers for RFQ vs other documents
+		const is_rfq = doctype === 'Request for Quotation';
+		const headers = is_rfq ? 
+			'<thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('UOM') + '</th></tr></thead>' :
+			'<thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('Rate') + '</th><th class="text-right">' + __('Amount') + '</th></tr></thead>';
+		
 		items_html += '<div style="margin-top:12px">\
 			<div class="font-weight-bold">' + __('Items') + '</div>\
 			<div class="table-responsive">\
 				<table class="table table-bordered table-sm" style="margin-top:6px">\
-					<thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('Rate') + '</th><th class="text-right">' + __('Amount') + '</th></tr></thead>\
+					' + headers + '\
 					<tbody>' + items_child.map(it => {
-						const amount = (it.amount != null) ? it.amount : (it.base_amount != null ? it.base_amount : '');
-						return '<tr>\
-							<td>' + frappe.utils.escape_html(it.item_name || it.item_code || '') + '</td>\
-							<td class="text-right">' + (it.qty != null ? it.qty : '') + '</td>\
-							<td class="text-right">' + (it.rate != null ? it.rate : '') + '</td>\
-							<td class="text-right">' + (amount != null ? amount : '') + '</td>\
-						</tr>';
+						if (is_rfq) {
+							return '<tr>\
+								<td>' + frappe.utils.escape_html(it.item_name || it.item_code || '') + '</td>\
+								<td class="text-right">' + (it.qty != null ? it.qty : '') + '</td>\
+								<td class="text-right">' + (it.uom || '') + '</td>\
+							</tr>';
+						} else {
+							const amount = (it.amount != null) ? it.amount : (it.base_amount != null ? it.base_amount : '');
+							return '<tr>\
+								<td>' + frappe.utils.escape_html(it.item_name || it.item_code || '') + '</td>\
+								<td class="text-right">' + (it.qty != null ? it.qty : '') + '</td>\
+								<td class="text-right">' + (it.rate != null ? it.rate : '') + '</td>\
+								<td class="text-right">' + (amount != null ? amount : '') + '</td>\
+							</tr>';
+						}
 					}).join('') + '</tbody>\
 				</table>\
 			</div>\
@@ -803,6 +1211,84 @@ function render_doc_preview(dialog, doctype, doc) {
 		pi_btn.on('click', () => create_pi_from_pr(doc.name, dialog));
 		actions.append(pi_btn);
 		$body.append(actions);
+	}
+
+	// Actions for RFQ
+	if (doctype === 'Request for Quotation') {
+		const actions = $('<div class="d-flex" style="gap:8px; justify-content:flex-end; margin-top:8px"></div>');
+		
+		// Submit button for Draft RFQ
+		if (doc.docstatus === 0 && doc.status === 'Draft') {
+			const submit_btn = $('<button class="btn btn-primary">' + __('Submit') + '</button>');
+			submit_btn.on('click', () => {
+				frappe.call({
+					method: 'frappe.client.submit',
+					args: { doc: doc },
+					freeze: true,
+					callback: (r) => {
+						if (r && r.message) {
+							frappe.show_alert({ message: __('RFQ {0} submitted', [r.message.name]), indicator: 'green' });
+							dialog.hide();
+							refresh_active_tab(cur_page.page);
+						}
+					},
+					error: (err) => {
+						frappe.msgprint({ title: __('Error'), message: __('Error submitting RFQ: {0}', [err.message || 'Unknown error']), indicator: 'red' });
+					}
+				});
+			});
+			actions.append(submit_btn);
+		}
+		
+		// Create Supplier Quotation button for submitted RFQ
+		if (doc.docstatus === 1 || doc.status === 'Open') {
+			const sq_btn = $('<button class="btn btn-primary">' + __('Create Supplier Quotation') + '</button>');
+			sq_btn.on('click', () => create_sq_from_rfq(doc, dialog));
+			actions.append(sq_btn);
+		}
+		
+		if (actions.children().length > 0) {
+			$body.append(actions);
+		}
+	}
+
+	// Actions for Supplier Quotation
+	if (doctype === 'Supplier Quotation') {
+		const actions = $('<div class="d-flex" style="gap:8px; justify-content:flex-end; margin-top:8px"></div>');
+		
+		// Submit button for Draft Supplier Quotation
+		if (doc.docstatus === 0 && doc.status === 'Draft') {
+			const submit_btn = $('<button class="btn btn-primary">' + __('Submit') + '</button>');
+			submit_btn.on('click', () => {
+				frappe.call({
+					method: 'frappe.client.submit',
+					args: { doc: doc },
+					freeze: true,
+					callback: (r) => {
+						if (r && r.message) {
+							frappe.show_alert({ message: __('Supplier Quotation {0} submitted', [r.message.name]), indicator: 'green' });
+							dialog.hide();
+							refresh_active_tab(cur_page.page);
+						}
+					},
+					error: (err) => {
+						frappe.msgprint({ title: __('Error'), message: __('Error submitting Supplier Quotation: {0}', [err.message || 'Unknown error']), indicator: 'red' });
+					}
+				});
+			});
+			actions.append(submit_btn);
+		}
+		
+		// Create Purchase Order button for submitted Supplier Quotation
+		if (doc.docstatus === 1 || doc.status === 'Submitted') {
+			const po_btn = $('<button class="btn btn-primary">' + __('Create Purchase Order') + '</button>');
+			po_btn.on('click', () => create_po_from_sq(doc, dialog));
+			actions.append(po_btn);
+		}
+		
+		if (actions.children().length > 0) {
+			$body.append(actions);
+		}
 	}
 }
 
@@ -995,6 +1481,209 @@ function create_pi_from_pr(pr_name, dialog) {
 			frappe.msgprint({
 				title: __('Error'),
 				message: __('Error fetching Purchase Receipt: {0}', [err.message || 'Unknown error']),
+				indicator: 'red'
+			});
+		}
+	});
+}
+
+function show_create_sq_option(submitted_rfq) {
+	const d = new frappe.ui.Dialog({
+		title: __('RFQ Submitted Successfully'),
+		size: 'small'
+	});
+	d.$body.append($('<div class="text-center" style="padding: 20px;">\
+		<div class="mb-3">' + __('RFQ {0} has been submitted.', [submitted_rfq.name]) + '</div>\
+		<div class="mb-3">' + __('Would you like to create Supplier Quotations for the suppliers?') + '</div>\
+	</div>'));
+	d.set_primary_action(__('Create Supplier Quotations'), () => {
+		d.hide();
+		create_sq_from_rfq(submitted_rfq, null);
+	});
+	d.set_secondary_action(__('Later'), () => {
+		d.hide();
+	});
+	d.show();
+}
+
+function create_sq_from_rfq(rfq_doc, dialog) {
+	if (!rfq_doc) return;
+	const suppliers = (rfq_doc.suppliers || []).map(s => s.supplier).filter(Boolean);
+	if (!suppliers.length) { frappe.msgprint(__('No suppliers on RFQ')); return; }
+	const d = new frappe.ui.Dialog({ title: __('Create Supplier Quotation'), size: 'large' });
+	
+	// Supplier selection
+	const supplier_group = $('<div class="form-group"></div>');
+	supplier_group.append('<label>' + __('Supplier') + '</label>');
+	const sel = $('<select class="form-control"></select>');
+	suppliers.forEach(s => sel.append('<option value="' + frappe.utils.escape_html(s) + '">' + frappe.utils.escape_html(s) + '</option>'));
+	supplier_group.append(sel);
+	d.$body.append(supplier_group);
+	
+	// Items table with rate inputs
+	const items_table = $('<div class="table-responsive" style="margin-top:16px"><table class="table table-bordered table-sm"><thead><tr><th>' + __('Item') + '</th><th class="text-right">' + __('Qty') + '</th><th class="text-right">' + __('UOM') + '</th><th class="text-right">' + __('Rate') + '</th><th class="text-right">' + __('Amount') + '</th></tr></thead><tbody class="sq-items-tbody"></tbody></table></div>');
+	d.$body.append(items_table);
+	
+	// Populate items with rate inputs
+	const tbody = items_table.find('.sq-items-tbody');
+	const items = rfq_doc.items || [];
+	items.forEach((item, idx) => {
+		const row = $('<tr data-item-code="' + frappe.utils.escape_html(item.item_code) + '">\
+			<td>' + frappe.utils.escape_html(item.item_name || item.item_code) + '</td>\
+			<td class="text-right">' + (item.qty || 1) + '</td>\
+			<td class="text-right">' + (item.uom || 'Nos') + '</td>\
+			<td class="text-right"><input type="number" step="0.01" min="0" class="form-control input-sm sq-rate" style="max-width:120px; margin-left:auto" value="0" data-qty="' + (item.qty || 1) + '"></td>\
+			<td class="text-right sq-amount">0.00</td>\
+		</tr>');
+		tbody.append(row);
+	});
+	
+	// Calculate amount when rate changes
+	tbody.on('input', '.sq-rate', function() {
+		const $row = $(this).closest('tr');
+		const rate = parseFloat($(this).val()) || 0;
+		const qty = parseFloat($(this).data('qty')) || 1;
+		const amount = rate * qty;
+		$row.find('.sq-amount').text(amount.toFixed(2));
+	});
+	
+	d.set_primary_action(__('Create'), () => {
+		const supplier = sel.val();
+		if (!supplier) return;
+		
+		// Collect items with rates
+		const sq_items = [];
+		tbody.find('tr').each(function() {
+			const $row = $(this);
+			const rate = parseFloat($row.find('.sq-rate').val()) || 0;
+			const qty = parseFloat($row.find('.sq-rate').data('qty')) || 1;
+			const item_code = $row.attr('data-item-code');
+			sq_items.push({
+				item_code: item_code,
+				qty: qty,
+				rate: rate,
+				amount: rate * qty,
+				uom: $row.find('td:nth-child(3)').text()
+			});
+		});
+		
+		const sq_doc = {
+			doctype: 'Supplier Quotation',
+			supplier: supplier,
+			company: rfq_doc.company,
+			transaction_date: frappe.datetime.get_today(),
+			items: sq_items
+		};
+		
+		frappe.call({ 
+			method: 'frappe.client.insert', 
+			args: { doc: sq_doc }, 
+			freeze: true, 
+			callback: (r) => {
+				if (r && r.message) {
+					frappe.show_alert({ message: __('Supplier Quotation {0} created', [r.message.name]), indicator: 'green' });
+					if (dialog) dialog.hide();
+					d.hide();
+					refresh_active_tab(cur_page.page);
+				}
+			}
+		});
+	});
+	d.show();
+}
+
+function create_po_from_sq(sq_doc, dialog) {
+	if (!sq_doc) return;
+	
+	// First get the Supplier Quotation details
+	frappe.call({
+		method: 'frappe.client.get',
+		args: { doctype: 'Supplier Quotation', name: sq_doc.name },
+		freeze: true,
+		callback: (sq_res) => {
+			const sq = sq_res && sq_res.message;
+			if (!sq || !(sq.items && sq.items.length)) { 
+				frappe.msgprint(__('No items found on Supplier Quotation')); 
+				return; 
+			}
+			
+			// Create Purchase Order document manually
+			const po_doc = {
+				doctype: 'Purchase Order',
+				supplier: sq.supplier,
+				company: sq.company,
+				transaction_date: frappe.datetime.get_today(),
+				schedule_date: frappe.datetime.get_today(),
+				currency: sq.currency || 'SAR',
+				conversion_rate: sq.conversion_rate || 1,
+				buying_price_list: sq.buying_price_list,
+				price_list_currency: sq.price_list_currency,
+				plc_conversion_rate: sq.plc_conversion_rate || 1,
+				items: (sq.items || []).map(it => ({
+					item_code: it.item_code,
+					item_name: it.item_name,
+					qty: it.qty || 1,
+					rate: it.rate || 0,
+					amount: (it.qty || 1) * (it.rate || 0),
+					uom: it.uom,
+					warehouse: it.warehouse,
+					base_rate: it.base_rate || it.rate || 0,
+					base_amount: (it.qty || 1) * (it.base_rate || it.rate || 0),
+					conversion_factor: it.conversion_factor || 1,
+					description: it.description,
+					against_supplier_quotation: sq.name,
+					against_supplier_quotation_item: it.name
+				}))
+			};
+			
+			// Insert the Purchase Order
+			frappe.call({
+				method: 'frappe.client.insert',
+				args: { doc: po_doc },
+				freeze: true,
+				callback: (ins) => {
+					const inserted = ins && ins.message;
+					if (!inserted) { 
+						frappe.msgprint(__('Failed to insert Purchase Order')); 
+						return; 
+					}
+					
+					// Submit the Purchase Order
+					frappe.call({
+						method: 'frappe.client.submit',
+						args: { doc: inserted },
+						freeze: true,
+						callback: (sub) => {
+							const submitted = sub && sub.message ? sub.message : inserted;
+							frappe.show_alert({ 
+								message: __('Purchase Order {0} submitted', [submitted.name]), 
+								indicator: 'green' 
+							});
+							if (dialog) dialog.hide();
+							refresh_active_tab(cur_page.page);
+						},
+						error: (err) => {
+							frappe.msgprint({
+								title: __('Error'),
+								message: __('Error submitting Purchase Order: {0}', [err.message || 'Unknown error']),
+								indicator: 'red'
+							});
+						}
+					});
+				},
+				error: (err) => {
+					frappe.msgprint({
+						title: __('Error'),
+						message: __('Error creating Purchase Order: {0}', [err.message || 'Unknown error']),
+						indicator: 'red'
+					});
+				}
+			});
+		},
+		error: (err) => {
+			frappe.msgprint({
+				title: __('Error'),
+				message: __('Error fetching Supplier Quotation: {0}', [err.message || 'Unknown error']),
 				indicator: 'red'
 			});
 		}
