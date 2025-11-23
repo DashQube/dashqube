@@ -1,0 +1,19 @@
+{
+ "content": null,
+ "creation": "2025-11-23 12:53:19.680413",
+ "docstatus": 0,
+ "doctype": "Page",
+ "idx": 0,
+ "modified": "2025-11-23 12:53:29.391665",
+ "modified_by": "Administrator",
+ "module": "DashQube",
+ "name": "stock-management",
+ "owner": "Administrator",
+ "page_name": "stock-management",
+ "roles": [],
+ "script": null,
+ "standard": "Yes",
+ "style": null,
+ "system_page": 0,
+ "title": "Stock Management"
+}

@@ -25,8 +25,13 @@ app_license = "mit"
 # ------------------
 
 # include js, css files in header of desk.html
-# app_include_css = "/assets/dashqube/css/dashqube.css"
-# app_include_js = "/assets/dashqube/js/dashqube.js"
+_asset_version = "1.0.0"  # You can use get_build_version() similar to posapp if needed
+app_include_js = [
+    f"/assets/dashqube/dist/js/dashboard.umd.js?v={_asset_version}",
+]
+app_include_css = [
+    f"/assets/dashqube/dist/js/dashboard.css?v={_asset_version}",
+]
 
 # include js, css files in header of web template
 # web_include_css = "/assets/dashqube/css/dashqube.css"
